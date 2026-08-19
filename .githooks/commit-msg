@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# The same firewall over the COMMIT MESSAGE.
+#
+# Staged content was checked and the message was not, so a prohibited term written into a
+# commit message entered history unopposed and was first discovered by a full-history
+# scan -- after the fact. A message is exactly as public as a blob.
+set -uo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=firewall_match.sh
+source "$HERE/firewall_match.sh"
+
+firewall_require_list || exit 1
+
+hits=$(cat "$1" | firewall_matches_in)
+if [[ -n "$hits" ]]; then
+  while IFS= read -r term; do
+    echo "FIREWALL VIOLATION: commit message contains prohibited term: $term" >&2
+  done <<< "$hits"
+  echo "Commit blocked. A commit message is as public as a blob." >&2
+  exit 1
+fi
+exit 0

@@ -1,0 +1,48 @@
+# Python bytecode and build products.
+__pycache__/
+*.py[cod]
+*$py.class
+build/
+dist/
+sdist/
+wheels/
+*.egg-info/
+*.egg
+.eggs/
+
+# Test, coverage and type-checker caches.
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+
+# Virtual environments. This repository's history is assumed to become public, and a
+# committed environment would carry third-party sources and absolute local paths into it.
+.venv/
+venv/
+env/
+ENV/
+__pypackages__/
+
+# Editor and OS noise.
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Merge and patch debris. `guard_sweep.py` and the mutation harness rewrite source files
+# in place and restore them; a crash mid-run can leave one of these behind, and it must
+# never be committed.
+*.orig
+*.rej
+*.bak
+
+# Local converge ledger. Process evidence for a machine-local hook, not part of the
+# implementation snapshot -- same reasoning as SESSION_STATE.md.
+.claude/

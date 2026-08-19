@@ -1,0 +1,133 @@
+{
+  "subject_commit": "16d51410b1db214dca4b0d7b5792e5890647c958",
+  "subject_parent": "5c76326e6055f7fc57a4aa9486c308f6864ccf90",
+  "working_tree": "clean",
+  "generated_utc": "2026-08-18T18:14:00+00:00",
+  "python": "3.14.4",
+  "platform": "Darwin 25.6.0 (arm64)",
+  "dependencies": {
+    "jsonschema": "4.26.0",
+    "pytest": "9.1.1",
+    "markdown": "3.10.3",
+    "weasyprint": "69.0"
+  },
+  "tests": {
+    "passed": 1335,
+    "failed": 0
+  },
+  "curated_mutation": {
+    "total": 154,
+    "killed": 154,
+    "conservative": 5,
+    "permissive": 149,
+    "attributed": 154,
+    "surviving": 0,
+    "invalid": 0,
+    "unattributed": 0,
+    "baseline_restored": true
+  },
+  "verifier": "passed",
+  "scenario": {
+    "delivered": 1,
+    "abstained": 2,
+    "abstention_reasons": [
+      "entitlement=UNAUTHORIZED",
+      "integrity=BROKEN",
+      "no loading window in zone-11 overlapping the horizon"
+    ],
+    "decision_time_observations": 9,
+    "hindsight_observations": 13,
+    "learned_later": 4,
+    "output_sha256": "dbfe9c55abf1c92bc9ae4b969fdf7240f579bb8f9ed067b43ceea6a1d70fe8c2"
+  },
+  "locale_byte_identity": {
+    "checked": true,
+    "locale": "fr_FR.UTF-8",
+    "byte_identical": true
+  },
+  "schema_equality": true,
+  "accepted_engineering_baseline": "a413f85ec50c5edb0fb67eeb2af68ae3f34f39b9",
+  "phase5_source_derived_and_guard_evidence": {
+    "carried_forward": true,
+    "basis": "engineering surface byte-identical to certified baseline a413f85ec50c5edb0fb67eeb2af68ae3f34f39b9; not re-measured here",
+    "baseline_commit": "a413f85ec50c5edb0fb67eeb2af68ae3f34f39b9",
+    "curated_mutation": {
+      "total": 154,
+      "killed": 154,
+      "conservative": 5,
+      "permissive": 149,
+      "attributed": 154,
+      "surviving": 0,
+      "invalid": 0,
+      "unattributed": 0,
+      "baseline_restored": true
+    },
+    "source_derived_mutation": {
+      "total": 2101,
+      "killed": 2092,
+      "declared_equivalent": 1,
+      "diagnostic_only": 6,
+      "declared_invalid": 2,
+      "unexplained": 0,
+      "undeclared_invalid": 0,
+      "timeout": 0,
+      "retry": 0,
+      "jobs1_jobs2_per_site_json_sha256": "401accc0dddc2a46bebec29673ae6fe868aae24ac68806d6aff39c712803f769"
+    },
+    "guard_sweep": {
+      "discovered": 220,
+      "load_bearing": 220,
+      "removable": 0,
+      "inconclusive": 0,
+      "invalid": 0,
+      "retry": 0,
+      "jobs1_jobs2_per_site_json_sha256": "ffefbc654d22043b3483a452bb3f7049ad75c0b962e32c96c09987c7cc431fa1"
+    }
+  },
+  "firewall": {
+    "result": "passed",
+    "policy_sha256": "25797a2c35cdf80fa585b9f9e00fac18b6c2dd3160cf96985926fbf9e04c5a79"
+  },
+  "artifacts": {
+    "README.md": "35991e6961c094a43f77463f1b7dedde60f18b56f399f5a80966eeff4c99a898",
+    "AUDIT.md": "7d056573c919bf389812285d5731c8f53d5bdc0243de0fbc8d179750d5467700",
+    "CONTRIBUTING.md": "470cea8a477e8c873851edcb8e6ce5afef5425ed3a09a22c7b7957adc003f559",
+    "SECURITY.md": "81c1bc97629a815f94865469817abaf9489141b4817e5c7f5f37574d57bc1da6",
+    "LICENSE": "037df8cb655d4ff33487e5052e79b617699db575004c68f7e122187b8de7d67f",
+    "pyproject.toml": "3753e75b06d789ec03db14da6714f5fb39260d5725a59543964785ba2dd7892b",
+    "docs/WHITEPAPER.md": "fc30752d16aa2570a079abc8eb86c396d2007bafc3a9358610a21a90931d65c1",
+    "docs/WHITEPAPER.pdf": "b027b664349d7f8c615b8fef46dfa06b8bb0a1a5f3d6aa7254fd07a8c2b291b7",
+    "docs/PRESENTATION.md": "7cc43fd668773a0a87e5b3d199498351aefc2ee55be55b60570965a495c979bc",
+    "docs/PRESENTATION.pdf": "bfa863fa75d2d42905ae60fc677c52674efc5b698df03733166a79e47c3e5c29",
+    "docs/SCHEMA_RECONCILIATION.md": "5216c9eff107d524a8484efc337fff3c4d7cbdb0ad3d614cc61292a52a344733",
+    "docs/PORTABILITY_CONTRACT.md": "520ee6cd16b104aacb5ddd3009eeb2f7f9b16a5c5c399d91f4b958af01f56190",
+    "schema/envelope-1.json": "79911b5a65a79c87ca1257bebfd3e96e2f74b55ecc21b0d4444d96016932285c",
+    "scenarios/incident_reconstruction.py": "371ee2b758e8a065fbb634274e18fa8441455cb9d618f1acfebc499fd02f5542",
+    "verify_package.py": "f029275ac33da99bf4996d42f88f9ecff76270ef5148a4ae5c8be93dcea0e2c5",
+    "mutation_harness.py": "0ddf89eb25860c5b449b3549f667eabe24d65b82ab866e4b2032a8382fcf199b",
+    "mutation_generator.py": "475ad4c632d94ff198b9f8e3bf4c3cf1e1bd9d25ce7003da67d90ce1acb9c5d8",
+    "guard_sweep.py": "4b5905a52f6fa027f30b61fdab3687e02f11c0f3462a236e430008e3fc1f057f",
+    "scan_history.sh": "632c499a62e678dd5279feb77838b9ff93fdc5f7799d81f5bd9b9187b2e7f6cc",
+    "docs/build_pdfs.py": "4bfe06e71c4ec7543315f51ed9bbf11eb5c83798cdb5f4570b729de9f13268fa",
+    "generate_release_evidence.py": "842f856c415c78486233c640d9c296d222b3a82433922be725df2a3e0303b440",
+    ".github/workflows/gates.yml": "0a8aa74bfc05e7d585dc084b84da2ef3f9b660de26bd466e0e73f0dcf30a8001",
+    ".githooks/firewall_match.sh": "68d94de6513feaf6b6286e47c8b5b1690370dd5cc68e2f03ee7287159be32530",
+    ".githooks/pre-commit": "5562f89abe2192e1ef0743066cddb24aa4e52d6040d12ed362d6983deaee292c"
+  },
+  "timings_seconds": {
+    "tests": 43.47,
+    "verifier": 41.35,
+    "scenario": 0.06
+  },
+  "limitations": [
+    "All data is synthetic. No result generalises to production telemetry.",
+    "Risk scores are relative orderings, not calibrated failure probabilities.",
+    "Outcome capture records what was observed, never what was caused.",
+    "Identity confidence is an input, not computed here.",
+    "The observation log is append-only in-process, not cryptographically chained.",
+    "A correction must name the reading it supersedes; unannounced corrections arriving under a new id are not inferred.",
+    "Entitlement records a rights determination made elsewhere; this code does not interpret contracts or determine legal rights.",
+    "Release authority is a single global confidence floor, not scaled to the economic consequence of the claim.",
+    "Digests are SHA-256 throughout but computed by four different digest-input constructions depending on the field -- see docs/PORTABILITY_CONTRACT.md."
+  ]
+}

@@ -1,0 +1,76 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "connected-asset-intelligence"
+version = "0.1.0"
+description = "A portable decision record for connected-asset intelligence products: identity, evidence, rights and outcome carried together so a prediction can become an enterprise-defensible decision."
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+readme = "README.md"
+authors = [{ name = "Kunjar Bhaduri" }]
+keywords = [
+    "connected-asset-intelligence",
+    "provenance",
+    "bitemporal",
+    "decision-record",
+    "predictive-maintenance",
+    "data-governance",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+# THE LIBRARY IS NO LONGER STDLIB-ONLY, AND THAT IS A DELIBERATE TRADE.
+#
+# The project publishes a Draft 2020-12 JSON Schema and calls it normative. It was not:
+# the importer validated nothing against it, so the schema an implementer in another
+# language builds against and the Python reconstruction that actually decides were two
+# descriptions of the accepted universe with nothing keeping them in agreement.
+#
+# Closing that means running the schema, and running a Draft 2020-12 schema correctly
+# means `jsonschema`. Hand-writing a validator to preserve a "stdlib-only" line would be
+# building a weaker second implementation of a mature specification -- exactly the kind of
+# platform imitation this project declines everywhere else -- and the line was a
+# convenience claim, not a correctness one.
+#
+# `format-nongpl` pulls the format validators, which is what makes `"format": "date-time"`
+# a constraint rather than an annotation. Without them jsonschema accepts any string for a
+# date-time and reports conformance, which is worse than not checking: it is a schema
+# declaring a rule it does not apply.
+dependencies = ["jsonschema[format-nongpl]>=4.18"]
+
+[project.urls]
+Repository = "https://github.com/linus10x/connected-asset-intelligence"
+Issues = "https://github.com/linus10x/connected-asset-intelligence/issues"
+
+[project.optional-dependencies]
+# Declaring this is what makes `python -m pip install -e '.[test]'` a documented step
+# rather than something a reviewer has to infer after pytest fails on a clean clone.
+test = ["pytest>=8.0"]
+# Only needed to regenerate docs/WHITEPAPER.pdf and docs/PRESENTATION.pdf from the
+# committed Markdown (see docs/build_pdfs.py). Not required to install, test, or run the
+# library or the scenario -- kept as its own extra so the publication step's dependency
+# footprint is visible rather than folded into `test` or, worse, into the base install.
+docs = ["markdown>=3.6", "weasyprint>=62"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

@@ -1,0 +1,86 @@
+# Deterministic engineering gates, run by GitHub against the exact commit.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# Every number in every handoff so far has been produced by the implementer, on the
+# implementer's machine, and pasted into a document. Control Tower has no way to tell a
+# measurement from a transcription, and the tooling that produced those numbers has been
+# wrong five times -- every time in the flattering direction.
+#
+# So the deterministic gates run here, tied to a SHA, in an environment nobody arranged.
+#
+# WHAT IS DELIBERATELY NOT HERE
+# -----------------------------
+# The firewall dictionary. It lives outside the repository on purpose -- committing an
+# opportunity-specific term list would leak the thing it protects -- and putting it in
+# Actions secrets would put it in a third place with a fourth access policy. `scan_history.sh`
+# stays a local gate, run before any push, and the handoff reports the list's SHA-256.
+#
+# The mutation gates. Two thousand mutants at roughly two seconds each is not a per-push
+# cost anyone should pay, and a gate people learn to skip is worse than one that is
+# honestly manual. They are run locally and their raw output goes in the handoff.
+#
+# This is not meant to be a build system. It is five checks whose failure means the same
+# thing to a reader as it does to the author.
+
+name: engineering gates
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # From pyproject alone. A clean clone that needs an undocumented step is a clone
+      # nobody else can reproduce, which is the whole point of running this here.
+      - name: install from pyproject
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[test]'
+          python -c "import jsonschema, rfc3339_validator; print(jsonschema.__version__)"
+
+      - name: pytest
+        run: python -m pytest -q
+
+      - name: the runnable scenario
+        run: python scenarios/incident_reconstruction.py > /dev/null
+
+      # Byte-identical under another locale. `strftime("%b")` reads LC_TIME, and a
+      # producer under fr_FR once rendered "13 juin" into a card stamped locale="en".
+      - name: the scenario under another locale
+        run: |
+          sudo locale-gen fr_FR.UTF-8 || true
+          python scenarios/incident_reconstruction.py > /tmp/en.txt
+          LC_ALL=fr_FR.UTF-8 python scenarios/incident_reconstruction.py > /tmp/fr.txt
+          diff /tmp/en.txt /tmp/fr.txt
+
+      - name: the committed schema equals the generated one
+        run: |
+          python - <<'PY'
+          import json, pathlib, sys
+          sys.path.insert(0, "src")
+          from cai.envelope import json_schema
+          on_disk = json.loads(pathlib.Path("schema/envelope-1.json").read_text())
+          if on_disk != json_schema():
+              raise SystemExit("schema/envelope-1.json is stale")
+          print("schema equality: True")
+          PY
+
+      # The narrative caught up to the code in Phase 6: verify_package.py now passes
+      # clean, so it is a normal gate again. A prior version of this step asserted a
+      # specific set of three expected failures, tolerated while README/WHITEPAPER/
+      # PRESENTATION were deliberately held stale pending a release-evidence cycle.
+      # That tolerance was itself a stale claim the day the narrative was fixed, and
+      # it stayed in this file after the fix landed -- a document about a check,
+      # forgetting to check itself. One obvious meaning now: it must pass.
+      - name: the package verifier
+        run: python verify_package.py

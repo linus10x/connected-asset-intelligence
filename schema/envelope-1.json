@@ -1,0 +1,1777 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://linus10x.github.io/connected-asset-intelligence/schema/envelope-1.json",
+  "title": "Intelligence Envelope",
+  "x-semantic-validations": {
+    "description": "Cross-field invariants this schema cannot express. An implementation that validates against the structure above and stops has NOT enforced the contract. The reference importer enforces these by reconstructing the typed domain, so the rules exist once rather than twice.",
+    "rules": [
+      "knowledge_cutoff <= model_decision_time",
+      "prediction_window_end > prediction_window_start, strictly: a zero-length interval is an instant, not a window",
+      "all timestamps are timezone-aware",
+      "the claim's horizon equals the prediction window's duration, not a separate value free to disagree with it",
+      "business_consequence.exposure_window overlaps the prediction window",
+      "action.operational_window overlaps the consequence's exposure window",
+      "action.due_by falls no later than its operational window closes",
+      "the claim's metric and horizon fall inside its own declared_envelope, and the envelope describes the model and build the claim came from",
+      "the claim replays: re-running the recorded predictor over the recorded inputs reproduces score, score_semantics, evidence_strength, metric, horizon, model version, artifact digest and input fingerprint",
+      "input_fingerprint is the fingerprint OF the recorded inputs, recomputable without the model",
+      "the consequence's derivation terminates at the consequence's own subject, is rooted where its type requires, continues only along relations that may follow one another, and reaches every entity it names",
+      "every derivation step was recorded by the knowledge cutoff; a walk cannot use a fact the decision-maker had not received",
+      "the walk carries at most one step per relationship. ContextGraph refuses outright when the facts admit two -- two zones at horizon start, two loading windows overlapping the horizon -- so a walk with a second branch is one no supported producer emitted",
+      "a CUSTOMER_COMMITMENT walk carries ASSIGNED_TO, SUPPORTS, LOADS and FULFILLS. HAS_COMPONENT is optional: derive_impact emits it only when a component was named, so requiring it would refuse an honest record",
+      "a step's validity interval is in force when the loading window opens AND when the evaluated window opens, which is the pair of moments the graph rechecks; an unscoped relation carries no interval at all",
+      "the derivation's cutoff and window are the decision context's",
+      "determination=DELIVERED requires assurance.permitted=true and a rendered_delivery whose rendered_at equals delivery_time",
+      "determination=ABSTAINED requires at least one blocking reason",
+      "assurance.permitted=true requires an empty blocking_reasons AND an evidence assessment that releases",
+      "re-running the named release policy over the recorded assurance basis reproduces permitted and blocking_reasons exactly",
+      "evidence.captured_at does not postdate delivery_time",
+      "valid_until, when present, postdates delivery_time and does not outlive the prediction window it describes",
+      "model_decision_time <= release_decision_time for every determination, delivered or abstained. They are different domain events -- one bounds the evidence, the other selects the rules -- so equality is not required and the ordering is",
+      "no product is actionable after action.due_by: the action is due no earlier than the model decided, delivery falls strictly before the deadline, and valid_until falls at or before it. A gate that runs late must not hand an operator an instruction that has already expired",
+      "an ABSTAINED product carries no lifecycle events, no outcome and no status events. A candidate that was withheld was never delivered, acknowledged, acted on, observed, retracted or superseded",
+      "the trail's opening event is timestamped exactly delivery_time. One delivery is one event, and a trail opening later gives a reader two answers about when the operator received it",
+      "observation ids are unique within the bundle",
+      "an integrity conflict names two readings sharing an observation id whose content genuinely differs, and the kept reading is the one the bundle carries",
+      "rendered_delivery.content_digest verifies against renderer_version, locale, rendered_text, card and rendered_at",
+      "entitlement scope is re-checked against the product's own recipient, purpose, tenant, subject and evidence source systems -- never against the assertion's own fields",
+      "derived values on the wire (action.rendered_text, consequence.description/actionable, evidence assessment release/blocking_reasons, product.release_policy_version, product.abstention_reason, outcome.description) are re-derived and must EQUAL what they were derived from; a disagreement is refused, not normalised",
+      "lifecycle events open at DELIVERED, follow permitted transitions, run chronologically, and do not predate delivery",
+      "outcome.subject is the claim's subject and outcome.related_action_id is the candidate's action",
+      "status events are chronological, postdate delivery, contain at most one retraction, and no supersession names the product itself",
+      "attributed_effect is NOT_ESTABLISHED; outcome capture never implies causation"
+    ]
+  },
+  "type": "object",
+  "required": [
+    "schema_version",
+    "schema_uri",
+    "canonicalization",
+    "product",
+    "lifecycle_events",
+    "outcome",
+    "attributed_effect",
+    "status_events"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "product": {
+            "properties": {
+              "determination": {
+                "const": "ABSTAINED"
+              }
+            },
+            "required": [
+              "determination"
+            ]
+          }
+        },
+        "required": [
+          "product"
+        ]
+      },
+      "then": {
+        "properties": {
+          "lifecycle_events": {
+            "maxItems": 0
+          },
+          "status_events": {
+            "maxItems": 0
+          },
+          "outcome": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "lifecycle_events": {
+            "minItems": 1
+          }
+        },
+        "required": [
+          "lifecycle_events"
+        ]
+      },
+      "then": {
+        "properties": {
+          "lifecycle_events": {
+            "prefixItems": [
+              {
+                "properties": {
+                  "state": {
+                    "const": "DELIVERED"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "cai.intelligence-envelope/1"
+    },
+    "schema_uri": {
+      "const": "https://linus10x.github.io/connected-asset-intelligence/schema/envelope-1.json"
+    },
+    "canonicalization": {
+      "const": "RFC8785-subset/1"
+    },
+    "attributed_effect": {
+      "description": "Single-valued by design. Outcome capture records what was observed, never what was caused.",
+      "enum": [
+        "NOT_ESTABLISHED"
+      ]
+    },
+    "product": {
+      "type": "object",
+      "required": [
+        "product_id",
+        "claim_series_id",
+        "determination",
+        "candidate",
+        "assurance",
+        "evidence",
+        "release_evidence",
+        "recipient",
+        "purpose",
+        "tenant",
+        "delivery_time",
+        "valid_until",
+        "supersedes_product_id",
+        "rendered_delivery",
+        "release_policy_version",
+        "abstention_reason"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "determination": {
+                "const": "DELIVERED"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "delivery_time": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "valid_until": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "rendered_delivery": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "abstention_reason": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "determination": {
+                "const": "ABSTAINED"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "abstention_reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "rendered_delivery": {
+                "type": "null"
+              },
+              "delivery_time": {
+                "type": "null"
+              },
+              "assurance": {
+                "properties": {
+                  "permitted": {
+                    "const": false
+                  },
+                  "blocking_reasons": {
+                    "minItems": 1
+                  }
+                }
+              }
+            },
+            "required": [
+              "abstention_reason"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "assurance": {
+                "properties": {
+                  "permitted": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "permitted"
+                ]
+              }
+            },
+            "required": [
+              "assurance"
+            ]
+          },
+          "then": {
+            "properties": {
+              "assurance": {
+                "properties": {
+                  "blocking_reasons": {
+                    "maxItems": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "assurance": {
+                "properties": {
+                  "permitted": {
+                    "const": false
+                  }
+                },
+                "required": [
+                  "permitted"
+                ]
+              }
+            },
+            "required": [
+              "assurance"
+            ]
+          },
+          "then": {
+            "properties": {
+              "assurance": {
+                "properties": {
+                  "blocking_reasons": {
+                    "minItems": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "product_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "claim_series_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "supersedes_product_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "determination": {
+          "enum": [
+            "DELIVERED",
+            "ABSTAINED"
+          ]
+        },
+        "recipient": {
+          "type": "string",
+          "minLength": 1
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What this delivery was FOR, as opposed to what the clearance covers. Absent from the record until this revision, so an importer could only check the entitlement against itself."
+        },
+        "tenant": {
+          "type": "string",
+          "minLength": 1
+        },
+        "delivery_time": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "valid_until": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "release_policy_version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Derived from the assurance decision. Re-derived on import and compared; a disagreement is refused rather than normalised."
+        },
+        "abstention_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "candidate": {
+          "type": "object",
+          "required": [
+            "candidate_id",
+            "context",
+            "prediction_claim",
+            "business_consequence",
+            "action"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "candidate_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "context": {
+              "type": "object",
+              "required": [
+                "model_decision_time",
+                "knowledge_cutoff",
+                "evaluation_time",
+                "prediction_window_start",
+                "prediction_window_end"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "model_decision_time": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "knowledge_cutoff": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "evaluation_time": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "prediction_window_start": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "prediction_window_end": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            },
+            "prediction_claim": {
+              "type": "object",
+              "required": [
+                "subject",
+                "metric",
+                "score",
+                "score_semantics",
+                "horizon_seconds",
+                "evidence_strength",
+                "model_version",
+                "model_artifact_digest",
+                "input_fingerprint",
+                "declared_envelope"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "subject": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "metric": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "score": {
+                  "type": "string",
+                  "pattern": "^-?\\d+\\.\\d{6}$",
+                  "description": "Floats cross as fixed six-decimal strings. The canonicalizer refuses non-integer floats rather than risk two implementations formatting the same value differently and producing two valid-looking digests."
+                },
+                "score_semantics": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "horizon_seconds": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                "evidence_strength": {
+                  "type": "string",
+                  "pattern": "^(0\\.\\d{6}|1\\.000000)$",
+                  "description": "A confidence in [0, 1], in the same fixed six-decimal wire form as every other float. The range is part of the type: `IdentityAssertion` and `PredictionClaim` both refuse a value outside it, and a schema that accepted 9.000000 would call a bundle conforming that the domain refuses."
+                },
+                "model_version": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "model_artifact_digest": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "input_fingerprint": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "declared_envelope": {
+                  "type": "object",
+                  "description": "What the model that produced this claim declares itself valid for. `ApplicabilityAssertion.subject_type` asserts a use falls inside this; until the claim carried one, that assertion was compared against nothing.",
+                  "required": [
+                    "model_version",
+                    "model_artifact_digest",
+                    "supported_applicability",
+                    "min_observations",
+                    "max_horizon_seconds"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "model_version": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "model_artifact_digest": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "supported_applicability": {
+                      "type": "array",
+                      "minItems": 1,
+                      "uniqueItems": true,
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "metric",
+                          "subject_type"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                          "metric": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "subject_type": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    },
+                    "min_observations": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    },
+                    "max_horizon_seconds": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                }
+              }
+            },
+            "business_consequence": {
+              "type": "object",
+              "required": [
+                "consequence_type",
+                "exposure_window_start",
+                "exposure_window_end",
+                "actionable",
+                "detail",
+                "description",
+                "derivation"
+              ],
+              "additionalProperties": false,
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "consequence_type": {
+                        "const": "CUSTOMER_COMMITMENT"
+                      }
+                    },
+                    "required": [
+                      "consequence_type"
+                    ]
+                  },
+                  "then": {
+                    "properties": {
+                      "detail": {
+                        "type": "object",
+                        "title": "CUSTOMER_COMMITMENT detail",
+                        "required": [
+                          "commitment_id",
+                          "commitment_description",
+                          "counterparty"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                          "commitment_id": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "commitment_description": {
+                            "type": "string"
+                          },
+                          "counterparty": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "consequence_type": {
+                        "const": "DOWNTIME"
+                      }
+                    },
+                    "required": [
+                      "consequence_type"
+                    ]
+                  },
+                  "then": {
+                    "properties": {
+                      "detail": {
+                        "type": "object",
+                        "title": "DOWNTIME detail",
+                        "required": [
+                          "asset_id",
+                          "expected_hours_lost",
+                          "affected_operation"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                          "asset_id": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "expected_hours_lost": {
+                            "type": "string",
+                            "pattern": "^\\d+\\.\\d{2}$"
+                          },
+                          "affected_operation": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              ],
+              "properties": {
+                "consequence_type": {
+                  "enum": [
+                    "CUSTOMER_COMMITMENT",
+                    "DOWNTIME"
+                  ],
+                  "description": "v1 implements exactly two. The abstraction is extensible; the vocabulary is not open."
+                },
+                "exposure_window_start": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "exposure_window_end": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "actionable": {
+                  "type": "boolean"
+                },
+                "derivation": {
+                  "type": "object",
+                  "description": "The REASON path. The walk produced this and the consequence was built from its answer, so the portable product carried the conclusion and not why the connected facts justify it. The governing contract requires both.",
+                  "required": [
+                    "rule_version",
+                    "knowledge_cutoff",
+                    "evaluated_window_start",
+                    "evaluated_window_end",
+                    "steps"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "rule_version": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "knowledge_cutoff": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "evaluated_window_start": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "evaluated_window_end": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "steps": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "relationship",
+                          "subject",
+                          "object",
+                          "recorded_at",
+                          "source_system",
+                          "valid_from",
+                          "valid_to"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                          "relationship": {
+                            "enum": [
+                              "HAS_COMPONENT",
+                              "ASSIGNED_TO",
+                              "SUPPORTS",
+                              "LOADS",
+                              "FULFILLS"
+                            ],
+                            "description": "Which relation may follow which is a semantic rule `ConsequenceDerivation` enforces; the schema closes the vocabulary."
+                          },
+                          "subject": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "object": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "recorded_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "source_system": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "valid_from": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          },
+                          "valid_to": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          }
+                        }
+                      },
+                      "minItems": 1
+                    }
+                  }
+                },
+                "detail": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "title": "CUSTOMER_COMMITMENT detail",
+                      "required": [
+                        "commitment_id",
+                        "commitment_description",
+                        "counterparty"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "commitment_id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "commitment_description": {
+                          "type": "string"
+                        },
+                        "counterparty": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "title": "DOWNTIME detail",
+                      "required": [
+                        "asset_id",
+                        "expected_hours_lost",
+                        "affected_operation"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "asset_id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "expected_hours_lost": {
+                          "type": "string",
+                          "pattern": "^\\d+\\.\\d{2}$"
+                        },
+                        "affected_operation": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "action": {
+              "type": "object",
+              "required": [
+                "action_id",
+                "action_type",
+                "target",
+                "responsible_role",
+                "due_by",
+                "operational_window_start",
+                "operational_window_end",
+                "reason",
+                "priority",
+                "prerequisites",
+                "rendered_text"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "action_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "action_type": {
+                  "enum": [
+                    "INSPECT",
+                    "SERVICE",
+                    "REPLACE",
+                    "RESCHEDULE",
+                    "MONITOR"
+                  ]
+                },
+                "target": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "responsible_role": {
+                  "type": "string"
+                },
+                "due_by": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "operational_window_start": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "operational_window_end": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "reason": {
+                  "type": "string"
+                },
+                "priority": {
+                  "enum": [
+                    "ROUTINE",
+                    "BEFORE_NEXT_USE",
+                    "IMMEDIATE"
+                  ]
+                },
+                "prerequisites": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "rendered_text": {
+                  "type": "string",
+                  "description": "Derived on export. Re-derived on import and COMPARED -- never read back as an input, and never silently overwritten either: this is the sentence a human was shown."
+                }
+              }
+            }
+          }
+        },
+        "assurance": {
+          "type": "object",
+          "required": [
+            "permitted",
+            "blocking_reasons",
+            "policy_id",
+            "policy_version",
+            "policy_digest",
+            "release_decision_time",
+            "assurance_context"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "permitted": {
+              "type": "boolean"
+            },
+            "blocking_reasons": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "policy_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "policy_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "policy_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "release_decision_time": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "assurance_context": {
+              "type": "object",
+              "required": [
+                "identity",
+                "applicability",
+                "temporal",
+                "entitlement",
+                "evidence"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "identity": {
+                  "type": "object",
+                  "required": [
+                    "resolved_entity",
+                    "resolver",
+                    "resolver_version",
+                    "confidence",
+                    "evidence_refs",
+                    "conflicts"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "resolved_entity": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "resolver": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "resolver_version": {
+                      "type": "string"
+                    },
+                    "confidence": {
+                      "type": "string",
+                      "pattern": "^(0\\.\\d{6}|1\\.000000)$",
+                      "description": "A confidence in [0, 1], in the same fixed six-decimal wire form as every other float. The range is part of the type: `IdentityAssertion` and `PredictionClaim` both refuse a value outside it, and a schema that accepted 9.000000 would call a bundle conforming that the domain refuses."
+                    },
+                    "evidence_refs": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "conflicts": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "applicability": {
+                  "type": "object",
+                  "required": [
+                    "model_version",
+                    "subject_type",
+                    "valid",
+                    "basis"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "model_version": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "subject_type": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "valid": {
+                      "type": "boolean"
+                    },
+                    "basis": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "temporal": {
+                  "type": "object",
+                  "required": [
+                    "model_decision_time",
+                    "knowledge_cutoff",
+                    "feature_cutoff",
+                    "valid",
+                    "basis"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "model_decision_time": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "knowledge_cutoff": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "feature_cutoff": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "valid": {
+                      "type": "boolean"
+                    },
+                    "basis": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "entitlement": {
+                  "type": "object",
+                  "description": "The full scope, not a summary. Subject, validity, licensed sources and both permission booleans were previously dropped on export, so an importer could not re-run the authorization this bundle asserts.",
+                  "required": [
+                    "recipient",
+                    "purpose",
+                    "subject",
+                    "tenant",
+                    "basis",
+                    "policy_id",
+                    "policy_version",
+                    "valid_from",
+                    "valid_to",
+                    "authorized_source_systems",
+                    "may_use_source_data",
+                    "may_deliver_to_recipient"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "recipient": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "purpose": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "subject": {
+                      "type": "string"
+                    },
+                    "tenant": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "basis": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "policy_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "policy_version": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "valid_from": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "valid_to": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "authorized_source_systems": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "may_use_source_data": {
+                      "type": "boolean"
+                    },
+                    "may_deliver_to_recipient": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "evidence": {
+                  "type": "object",
+                  "description": "The six-dimension assessment that actually decided. Enumerated, not free text: the whole state space is closed and exactly one combination releases.",
+                  "required": [
+                    "support",
+                    "completeness",
+                    "integrity",
+                    "temporal_eligibility",
+                    "identity",
+                    "entitlement",
+                    "release",
+                    "missing_evidence",
+                    "conflicts",
+                    "blocking_reasons"
+                  ],
+                  "additionalProperties": false,
+                  "allOf": [
+                    {
+                      "if": {
+                        "properties": {
+                          "completeness": {
+                            "const": "MISSING"
+                          }
+                        },
+                        "required": [
+                          "completeness"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "missing_evidence": {
+                            "minItems": 1
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "completeness": {
+                            "const": "COMPLETE"
+                          }
+                        },
+                        "required": [
+                          "completeness"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "missing_evidence": {
+                            "maxItems": 0
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "support": {
+                            "const": "CONFLICTED"
+                          }
+                        },
+                        "required": [
+                          "support"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "conflicts": {
+                            "minItems": 1
+                          }
+                        }
+                      }
+                    }
+                  ],
+                  "properties": {
+                    "support": {
+                      "enum": [
+                        "UNSUPPORTED",
+                        "SUPPORTED",
+                        "REFUTED",
+                        "CONFLICTED"
+                      ]
+                    },
+                    "completeness": {
+                      "enum": [
+                        "COMPLETE",
+                        "MISSING"
+                      ]
+                    },
+                    "integrity": {
+                      "enum": [
+                        "VALID",
+                        "BROKEN"
+                      ]
+                    },
+                    "temporal_eligibility": {
+                      "enum": [
+                        "ELIGIBLE_AS_OF_DECISION",
+                        "LATE",
+                        "OUTSIDE_VALID_WINDOW"
+                      ]
+                    },
+                    "identity": {
+                      "enum": [
+                        "RESOLVED",
+                        "AMBIGUOUS",
+                        "CONFLICTED"
+                      ]
+                    },
+                    "entitlement": {
+                      "enum": [
+                        "AUTHORIZED",
+                        "UNAUTHORIZED",
+                        "UNKNOWN"
+                      ]
+                    },
+                    "release": {
+                      "enum": [
+                        "RELEASE",
+                        "WITHHOLD"
+                      ]
+                    },
+                    "missing_evidence": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "conflicts": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "blocking_reasons": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "evidence": {
+          "type": "object",
+          "description": "The evidence the claim rests on. Absent from the bundle entirely until this revision, which left every guarantee about the claim uncheckable by any reader.",
+          "required": [
+            "observation_ids",
+            "subject",
+            "evidence_content_digest",
+            "source_systems",
+            "captured_at",
+            "model_version",
+            "semantic_rule_version",
+            "identity_confidence",
+            "prediction_inputs"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "observation_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "subject": {
+              "type": "string",
+              "description": "What the cited readings are about. Absent until the claim's subject was found to be a free variable: every check that consumed a subject read it from the claim itself."
+            },
+            "model_version": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "semantic_rule_version": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "identity_confidence": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(0\\.\\d{6}|1\\.000000)$",
+                  "description": "A confidence in [0, 1], in the same fixed six-decimal wire form as every other float. The range is part of the type: `IdentityAssertion` and `PredictionClaim` both refuse a value outside it, and a schema that accepted 9.000000 would call a bundle conforming that the domain refuses."
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "evidence_content_digest": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "source_systems": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "captured_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "prediction_inputs": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "required": [
+                "metric",
+                "values",
+                "horizon_seconds",
+                "model_version",
+                "input_fingerprint",
+                "bound_inputs"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "metric": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "horizon_seconds": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                "model_version": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "input_fingerprint": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "values": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^-?\\d+\\.\\d{6}$",
+                    "description": "Floats cross as fixed six-decimal strings. The canonicalizer refuses non-integer floats rather than risk two implementations formatting the same value differently and producing two valid-looking digests."
+                  },
+                  "minItems": 1
+                },
+                "bound_inputs": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "observation_id",
+                      "content_digest",
+                      "value_used"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "observation_id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "content_digest": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "value_used": {
+                        "type": "string",
+                        "pattern": "^-?\\d+\\.\\d{6}$",
+                        "description": "Floats cross as fixed six-decimal strings. The canonicalizer refuses non-integer floats rather than risk two implementations formatting the same value differently and producing two valid-looking digests."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "release_evidence": {
+          "type": "object",
+          "description": "The evidence bundle the release assessment consumed: the point-in-time view AND the same-id/different-payload contradictions found in it. Both travel, because a contradiction a producer can decline to mention is a withholding that never happens.",
+          "required": [
+            "observations",
+            "integrity_conflicts"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "observations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "description": "One reading, carried in full rather than cited. The snapshot's observation_ids are pointers; a reader holding only pointers can check that the record agrees with itself and nothing else. These are what the release assessment ran over, so an importer can run it again.",
+                "required": [
+                  "observation_id",
+                  "subject",
+                  "metric",
+                  "value",
+                  "valid_time",
+                  "transaction_time",
+                  "source_system",
+                  "supersedes"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "observation_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "subject": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "metric": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "value": {
+                    "type": "string",
+                    "pattern": "^-?\\d+\\.\\d{6}$",
+                    "description": "Floats cross as fixed six-decimal strings. The canonicalizer refuses non-integer floats rather than risk two implementations formatting the same value differently and producing two valid-looking digests."
+                  },
+                  "valid_time": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "transaction_time": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "source_system": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "supersedes": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            },
+            "integrity_conflicts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "kept",
+                  "rejected"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "kept": {
+                    "type": "object",
+                    "description": "One reading, carried in full rather than cited. The snapshot's observation_ids are pointers; a reader holding only pointers can check that the record agrees with itself and nothing else. These are what the release assessment ran over, so an importer can run it again.",
+                    "required": [
+                      "observation_id",
+                      "subject",
+                      "metric",
+                      "value",
+                      "valid_time",
+                      "transaction_time",
+                      "source_system",
+                      "supersedes"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "observation_id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "subject": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "metric": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "value": {
+                        "type": "string",
+                        "pattern": "^-?\\d+\\.\\d{6}$",
+                        "description": "Floats cross as fixed six-decimal strings. The canonicalizer refuses non-integer floats rather than risk two implementations formatting the same value differently and producing two valid-looking digests."
+                      },
+                      "valid_time": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "transaction_time": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "source_system": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "supersedes": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    }
+                  },
+                  "rejected": {
+                    "type": "object",
+                    "description": "One reading, carried in full rather than cited. The snapshot's observation_ids are pointers; a reader holding only pointers can check that the record agrees with itself and nothing else. These are what the release assessment ran over, so an importer can run it again.",
+                    "required": [
+                      "observation_id",
+                      "subject",
+                      "metric",
+                      "value",
+                      "valid_time",
+                      "transaction_time",
+                      "source_system",
+                      "supersedes"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "observation_id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "subject": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "metric": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "value": {
+                        "type": "string",
+                        "pattern": "^-?\\d+\\.\\d{6}$",
+                        "description": "Floats cross as fixed six-decimal strings. The canonicalizer refuses non-integer floats rather than risk two implementations formatting the same value differently and producing two valid-looking digests."
+                      },
+                      "valid_time": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "transaction_time": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "source_system": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "supersedes": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "rendered_delivery": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "renderer_version",
+                "locale",
+                "rendered_text",
+                "card",
+                "content_digest",
+                "rendered_at"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "renderer_version": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "locale": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "rendered_text": {
+                  "type": "string"
+                },
+                "card": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "description": "Deliberately open in its KEYS: the card is the operator's mental model and a renderer may add a field. Its values are constrained, and the whole card is inside the digest."
+                },
+                "content_digest": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "rendered_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "lifecycle_events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "state",
+          "at",
+          "actor",
+          "note"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "state": {
+            "enum": [
+              "DELIVERED",
+              "ACKNOWLEDGED",
+              "ACCEPTED",
+              "OVERRIDDEN",
+              "IGNORED",
+              "ACTION_COMPLETED",
+              "OUTCOME_OBSERVED"
+            ]
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "actor": {
+            "type": "string",
+            "minLength": 1
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "outcome": {
+      "description": "The typed LEARN boundary. This was `{\"type\": [\"object\", \"null\"]}` -- unconstrained -- while `OutcomeObservation` was a real type carrying the action join that makes an evaluation dataset possible.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "required": [
+            "outcome_id",
+            "outcome_type",
+            "subject",
+            "observation_window_start",
+            "observation_window_end",
+            "observed_at",
+            "source",
+            "related_action_id",
+            "metric",
+            "value",
+            "severity",
+            "note",
+            "description"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "outcome_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "outcome_type": {
+              "enum": [
+                "FAILURE_OCCURRED",
+                "NO_FAILURE_OBSERVED",
+                "DEFECT_FOUND_ON_INSPECTION",
+                "NO_DEFECT_FOUND",
+                "NOT_OBSERVED"
+              ]
+            },
+            "subject": {
+              "type": "string",
+              "minLength": 1
+            },
+            "observation_window_start": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "observation_window_end": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "observed_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "source": {
+              "type": "string"
+            },
+            "related_action_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "metric": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "value": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^-?\\d+\\.\\d{6}$",
+                  "description": "Floats cross as fixed six-decimal strings. The canonicalizer refuses non-integer floats rather than risk two implementations formatting the same value differently and producing two valid-looking digests."
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "severity": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "note": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "status_events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "event_type",
+          "at",
+          "actor",
+          "reason",
+          "replacement_product_id"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "event_type": {
+            "enum": [
+              "RETRACTED",
+              "SUPERSEDED"
+            ]
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "actor": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reason": {
+            "type": "string"
+          },
+          "replacement_product_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "event_type": {
+                  "const": "RETRACTED"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "reason": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "event_type": {
+                  "const": "SUPERSEDED"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "replacement_product_id": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

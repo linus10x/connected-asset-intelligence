@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Fail-closed naming firewall over STAGED CONTENT. This repo's ENTIRE history is assumed
+# to become public. The banned-term list lives OUTSIDE this repo on purpose: committing an
+# opportunity-specific dictionary would leak the opportunity through git history.
+#
+# Matching is delegated to firewall_match.sh, which scan_history.sh also uses. This hook
+# once matched with `grep -iE` while the authoritative scanner matched literally, and the
+# two disagreed in both directions -- including one that MISSED a real term. There is now
+# one implementation and nothing left to drift.
+#
+# DEFENCE IN DEPTH, NOT EVIDENCE. A prohibited name reached two commits through this hook
+# and the miss was never reproduced. ./scan_history.sh is the authoritative gate; run it
+# before any push.
+set -uo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=firewall_match.sh
+source "$HERE/firewall_match.sh"
+
+firewall_require_list || exit 1
+
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+[[ -z "$staged" ]] && exit 0
+
+# THE INDEXED BLOBS, NOT THE PATCH. `git diff --cached -U0` renders a staged binary as
+# "Binary files a/x and b/x differ", so the prohibited bytes inside the blob never
+# reached this matcher and a staged PDF committed clean. See firewall_staged_content.
+hits=$(firewall_staged_content | firewall_matches_in)
+if [[ -n "$hits" ]]; then
+  while IFS= read -r term; do
+    echo "FIREWALL VIOLATION: staged content contains prohibited term: $term" >&2
+  done <<< "$hits"
+  echo "Commit blocked. This repo's history is assumed public." >&2
+  exit 1
+fi
+exit 0
