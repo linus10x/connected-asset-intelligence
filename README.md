@@ -169,7 +169,9 @@ cannot be used to justify it.
 
 ## Verification and reproducibility
 
-- `.venv/bin/python -m pytest tests/ -q` — 1335 tests. Every refusal test is paired
+- `.venv/bin/python -m pip install -e '.[test]'` first (the suite needs the `[test]`
+  extras; without them it fails at import), then
+  `.venv/bin/python -m pytest tests/ -q` — 1335 tests. Every refusal test is paired
   with one asserting the system does *not* over-refuse, because a property like "missing
   evidence must yield NOT_PROVABLE" is satisfied perfectly by a function that refuses
   unconditionally — that pairing is what makes the suite mean something.
